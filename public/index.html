@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My PIM - 완전체 매니저</title>
+    <style>
+        /* [1. 기본 스타일] */
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f0f2f5; color: #333; margin: 0; padding: 0; min-height: 100vh; display: flex; flex-direction: column; }
+        .hidden { display: none !important; }
+        .container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 20px; flex-grow: 1; }
+        
+        /* [UI 개선 반영] 체크박스, 색상선택기 크기 고정 및 라벨 정렬 */
+        input[type="checkbox"], input[type="color"] { width: auto; padding: 0; margin: 0; border: none; cursor: pointer; display: inline-block; vertical-align: middle; height: 20px; }
+        .filter-label { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-weight: bold; margin-right: 15px; }
+
+        /* [2. 인증] */
+        .auth-box { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); max-width: 350px; margin: 15vh auto; text-align: center; }
+        .auth-box input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+
+        /* [3. 네비게이션] */
+        #top-nav { background: white; padding: 0 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+        .nav-tabs { display: flex; gap: 20px; }
+        .nav-tab { padding: 20px 10px; font-weight: bold; color: #666; cursor: pointer; border-bottom: 3px solid transparent; transition: 0.2s; }
+        .nav-tab.active { color: #007bff; border-bottom: 3px solid #007bff; }
+        
+        .btn-main { background: #007bff; color: white; border: none; border-radius: 8px; padding: 10px 20px; font-weight: bold; cursor: pointer; }
+        .btn-sub { background: #e9ecef; color: #444; border: none; border-radius: 8px; padding: 10px 20px; cursor: pointer; }
+        input[type="text"], input[type="password"], input[type="date"], input[type="time"], select, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; margin-top: 5px; font-family: inherit; }
+
+        /* [4. 달력] 26일 레이아웃 고정 및 배지 */
+        .large-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); background: white; border: 1px solid #ddd; border-radius: 12px; overflow: hidden; }
+        .large-cal-day-name { text-align: center; font-weight: bold; color: #777; padding: 10px 0; border-bottom: 1px solid #ddd; border-right: 1px solid #ddd; background: #f8f9fa; }
+        .large-cal-box { min-height: 140px; padding: 5px; border-right: 1px solid #ddd; border-bottom: 1px solid #ddd; cursor: pointer; display: flex; flex-direction: column; transition: background 0.1s; }
+        .large-cal-box:nth-child(7n) { border-right: none; }
+        .large-cal-date-row { height: 32px; display: flex; justify-content: flex-end; align-items: center; margin-bottom: 5px; padding-right: 5px; }
+        .today-badge { background: #007bff; color: white; border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+        .event-badge { font-size: 0.8em; padding: 5px 8px; border-radius: 6px; margin-bottom: 4px; font-weight: bold; cursor: grab; line-height: 1.3; border-left: 4px solid #007bff; box-shadow: 0 1px 3px rgba(0,0,0,0.1); word-break: break-all; }
+
+        /* [5. 할일 & 메모] 드래그 효과 */
+        .app-layout { display: flex; gap: 20px; }
+        .sidebar { width: 250px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); flex-shrink: 0; }
+        .main-content { flex: 1; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .folder-list { list-style: none; padding: 0; border-top: 1px solid #eee; padding-top: 10px; }
+        .folder-item { padding: 12px 15px; margin-bottom: 4px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; transition: 0.2s; }
+        .folder-item.active { background: #007bff; color: white; font-weight: bold; }
+        
+        .todo-item { display: flex; align-items: center; gap: 15px; padding: 15px; border-bottom: 1px solid #eee; background: white; cursor: grab; }
+        .todo-item.completed { opacity: 0.5; }
+        .todo-item.completed .todo-title-text { text-decoration: line-through; color: #999; }
+        .sub-task { margin-left: 35px; border-left: 3px solid #007bff; background: #f8faff; border-radius: 0 8px 8px 0; }
+        .overdue { color: #dc3545 !important; font-weight: bold; }
+
+        .note-layout { display: flex; gap: 20px; height: 75vh; }
+        .note-sidebar { width: 300px; background: white; border-radius: 12px; overflow-y: auto; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .tree-folder-header { padding: 15px; background: #f8f9fa; font-weight: bold; cursor: pointer; display: flex; justify-content: space-between; border-bottom: 1px solid #eee; }
+        .tree-folder-header.drag-over { background: #007bff !important; color: white; }
+        .tree-note-item { padding: 10px 15px 10px 35px; cursor: grab; border-bottom: 1px solid #f9f9f9; font-size: 0.95em; }
+        .tree-note-item.active { background: #e0f0ff; color: #007bff; font-weight: bold; }
+        .note-main { flex: 1; background: white; border-radius: 12px; display: flex; flex-direction: column; padding: 30px; }
+
+        /* [6. 모달 & 팝업] */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 2000; }
+        .modal-content { background: white; padding: 35px; border-radius: 20px; width: 100%; max-width: 450px; box-shadow: 0 15px 50px rgba(0,0,0,0.3); max-height: 90vh; overflow-y: auto; }
+        #drag-guide-label { position: fixed; pointer-events: none; padding: 8px 16px; background: rgba(0,123,255,0.9); color: white; border-radius: 20px; font-weight: bold; z-index: 9999; display: none; }
+        /* [달력 주말 및 공휴일 색상] */
+        .text-sun { color: #dc3545 !important; font-weight: bold; } /* 빨강 (일요일/공휴일) */
+        .text-sat { color: #007bff !important; font-weight: bold; } /* 파랑 (토요일) */
+        .holiday-name { font-size: 0.75em; color: #dc3545; font-weight: bold; margin-right: auto; padding-left: 5px; }
+	#custom-tooltip {
+            position: fixed;
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 0.85em;
+            z-index: 10000;
+            pointer-events: none; /* 드래그를 방해하지 않도록 마우스 이벤트 무시 */
+            max-width: 250px;
+            line-height: 1.5;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+	.note-editor-content {
+            flex: 1; /* 부모(note-main)의 남은 세로 공간을 모두 차지함 */
+            resize: none; /* 우측 하단 크기 조절 손잡이 숨김 */
+            font-size: 1.05em; /* 글씨 크기 살짝 키움 */
+            line-height: 1.6; /* 줄 간격을 넓혀서 가독성 향상 */
+            padding: 15px; /* 안쪽 여백 추가 */
+            border: 1px solid #eee; /* 테두리를 은은하게 */
+            border-radius: 8px; /* 모서리 둥글게 */
+            background-color: #fcfcfc; /* 배경색을 살짝 다르게 하여 입력창 구분 */
+        }
+    </style>
+</head>
+<body class="login-mode">
+
+    <div id="drag-guide-label"></div>
+    <div id="custom-tooltip" class="hidden"></div>
+
+    <div id="top-nav" class="hidden">
+        <div class="nav-tabs">
+            <div id="nav-calendar" class="nav-tab active" onclick="switchTab('calendar')">📅 일정</div>
+            <div id="nav-todo" class="nav-tab" onclick="switchTab('todo')">✅ 할일관리</div>
+            <div id="nav-notes" class="nav-tab" onclick="switchTab('notes')">📝 메모</div>
+        </div>
+        <button onclick="logout()" style="background:none; border:none; cursor:pointer; color:#888; font-weight:bold; padding:20px;">로그아웃</button>
+    </div>
+
+    <div class="container">
+        <div id="auth-section">
+            <div id="login-form" class="auth-box">
+                <h2 style="margin-top:0">로그인</h2>
+                <input type="text" id="login-id" placeholder="아이디">
+                <input type="password" id="login-pw" placeholder="비밀번호" onkeypress="if(event.key==='Enter') handleLogin()">
+                <button class="btn-main" style="width:100%" onclick="handleLogin()">시작하기</button>
+                <p style="font-size:0.9em; margin-top:20px;">계정이 없나요? <a href="#" onclick="toggleAuth('signup')">회원가입</a></p>
+            </div>
+            <div id="signup-form" class="auth-box hidden">
+                <h2 style="margin-top:0">회원가입</h2>
+                <input type="text" id="signup-id" placeholder="사용할 아이디">
+                <input type="password" id="signup-pw" placeholder="비밀번호" oninput="checkPw()">
+                <div id="pw-hint" class="pw-hint invalid">특수문자+대소문자 포함 8자 이상</div>
+                <button id="signup-btn" class="btn-main" style="width:100%" onclick="handleSignup()" disabled>가입 신청</button>
+                <p style="font-size:0.9em; margin-top:20px;"><a href="#" onclick="toggleAuth('login')">로그인으로 돌아가기</a></p>
+            </div>
+        </div>
+
+        <div id="admin-section" class="hidden">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h1>🛡️ 시스템 관리자</h1>
+                <button class="btn-sub" onclick="logout()">로그아웃</button>
+            </div>
+            <table style="width:100%; border-collapse:collapse; background:white; border-radius:15px; overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+                <thead><tr style="background:#f8f9fa; border-bottom:2px solid #eee;"><th style="padding:15px;">ID</th><th>사용자명</th><th>상태</th><th>관리</th></tr></thead>
+                <tbody id="admin-user-list" style="text-align:center;"></tbody>
+            </table>
+        </div>
+
+        <div id="app-section" class="hidden">
+            <div id="tab-calendar">
+                <div class="large-cal-header">
+                    <h2 id="cal-title" style="margin:0;"></h2>
+                    <div>
+			<button class="btn-main" style="margin-right:15px; padding: 8px 15px;" onclick="goToday()">오늘 📅</button>
+                        <button class="btn-sub" onclick="changeMonth(-1)">◀ 이전 달</button>
+                        <button class="btn-sub" onclick="changeMonth(1)">다음 달 ▶</button>
+                        <button class="btn-sub" style="margin-left:10px; font-weight:bold; color:#007bff;" onclick="openCatMgr()">🏷️ 카테고리 관리</button>
+                    </div>
+                </div>
+                <div class="large-cal-grid" id="large-cal-grid"></div>
+            </div>
+
+            <div id="tab-todo" class="hidden app-layout">
+                <div class="sidebar">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h3>📂 폴더</h3>
+                        <button class="btn-sub" onclick="openFolderMgr('todo')">⚙️ 설정</button>
+                    </div>
+                    <ul id="todo-folder-list" class="folder-list"></ul>
+                    </div>
+                <div class="main-content">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px;">
+                        <h2 id="todo-folder-title" style="margin:0; font-size:1.8em;">오늘 할 일</h2>
+                        <input type="text" id="todo-search" placeholder="🔍 검색..." style="width:200px; padding:10px; border-radius:20px; border:1px solid #ddd;" onkeyup="renderTodos()">
+                    </div>
+                    <div style="display:flex; justify-content:space-between; background:#f8f9fa; padding:15px; border-radius:12px; margin-bottom:20px; align-items:center;">
+                        <div>
+                            <label class="filter-label"><input type="checkbox" id="hide-future" checked onchange="renderTodos()"> 미래 숨기기</label>
+                            <label class="filter-label" style="margin-right:0;"><input type="checkbox" id="hide-completed" onchange="renderTodos()"> 완료 숨기기</label>
+                        </div>
+                        <button class="btn-main" onclick="openTodoModal()">+ 할 일 추가</button>
+                    </div>
+                    <div id="todo-list"></div>
+                </div>
+            </div>
+
+            <div id="tab-notes" class="hidden note-layout">
+                <div class="note-sidebar">
+                    <div class="tree-folder-header">
+                        <b>📁 내 메모장</b>
+                        <button onclick="openFolderMgr('note')" style="color:#007bff; border:none; background:none; font-weight:bold;">⚙️ 설정</button>
+                    </div>
+                    <div style="padding:15px;"><button class="btn-main" style="width:100%" onclick="newNote()">+ 새 메모 작성</button></div>
+                    <div id="note-tree" style="flex:1;"></div>
+                </div>
+                <div class="note-main">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                        <select id="note-folder-sel" style="width:auto; padding:10px 15px; background:#f8f9fa; border:1px solid #eee; font-weight:bold;"></select>
+                        <div style="display:flex; align-items:center; gap:20px;">
+                            <span id="save-status" style="font-size:0.85em; color:#28a745; font-weight:bold;"></span>
+                            <button class="btn-sub" style="color:#dc3545; font-weight:bold;" onclick="delCurrentNote()">삭제</button>
+                            <button class="btn-main" onclick="saveNoteManual()">저장하기</button>
+                        </div>
+                    </div>
+                    <input type="text" id="note-title" style="font-size:1.5em; border:none; border-bottom:2px solid #eee; padding-bottom:10px; margin-bottom:15px; outline:none;" placeholder="제목" oninput="autoSave()">
+                    <textarea id="note-content" class="note-editor-content" placeholder="여기에 내용을 입력하세요. 자동으로 저장됩니다..." oninput="autoSave()"></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="folder-mgr-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 style="margin-top:0;">📂 폴더 관리</h3>
+            <div id="folder-mgr-list" style="margin-bottom:20px; max-height:300px; overflow-y:auto; border-bottom:1px solid #eee; padding-bottom:15px;"></div>
+            
+            <div style="display:flex; gap:10px; align-items:center; margin-top:15px;">
+                <input type="text" id="new-folder-name" placeholder="새로운 폴더 이름" style="flex:2; margin:0;">
+                <button class="btn-main" onclick="addNewFolderFromMgr()">추가</button>
+            </div>
+            
+            <button class="btn-sub" style="width:100%; margin-top:20px;" onclick="closeModal('folder-mgr-modal')">닫기</button>
+        </div>
+    </div>
+
+    <div id="event-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 style="margin-top:0;">📅 일정 등록/수정</h3>
+            <input type="hidden" id="ev-id">
+            <label>제목</label><input type="text" id="ev-title" placeholder="어떤 일정인가요?">
+            <div style="display:flex; gap:10px;">
+                <div style="flex:1"><label>시작일</label><input type="date" id="ev-sd"></div>
+                <div style="flex:1"><label>종료일</label><input type="date" id="ev-ed"></div>
+            </div>
+            <label>카테고리</label><select id="ev-cat"></select>
+            <div style="margin:15px 0;"><label class="filter-label"><input type="checkbox" id="ev-allday" onchange="toggleEvTime()"> 하루 종일</label></div>
+            <div id="ev-time-box" style="display:flex; gap:10px;">
+                <div style="flex:1"><label>시작 시간</label><input type="time" id="ev-st" step="300" onchange="evStartChange()"></div>
+                <div style="flex:1"><label>종료 시간</label><input type="time" id="ev-et" step="300"></div>
+            </div>
+            <label>상세 메모</label><textarea id="ev-note" rows="2"></textarea>
+            <div style="display:flex; gap:10px; margin-top:25px;">
+                <button class="btn-main" style="flex:2" onclick="saveEvent()">저장하기</button>
+                <button id="ev-del-btn" class="btn-sub" style="flex:1; color:red;" onclick="delEvent()">삭제</button>
+                <button class="btn-sub" style="flex:1" onclick="closeModal('event-modal')">취소</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="todo-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 style="margin-top:0;">📝 할 일 추가/수정</h3>
+            <input type="hidden" id="todo-id">
+            <label>제목</label><input type="text" id="todo-title">
+            <div style="display:flex; gap:10px;">
+                <div style="flex:1"><label>폴더</label><select id="todo-folder-sel-modal"></select></div>
+                <div style="flex:1"><label>마감일</label><input type="date" id="todo-due"></div>
+            </div>
+            <label>반복 설정</label>
+            <select id="todo-recur">
+                <option value="none">반복 안 함</option>
+                <option value="daily">매일</option>
+                <option value="weekly">매주</option>
+                <option value="monthly">매월</option>
+            </select>
+            <label>상세 메모</label><textarea id="todo-note" rows="2"></textarea>
+            <div style="display:flex; gap:12px; margin-top:25px;">
+                <button class="btn-main" style="flex:1" onclick="saveTodo()">저장하기</button>
+                <button class="btn-sub" style="flex:1" onclick="closeModal('todo-modal')">취소</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="cat-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 style="margin-top:0;">🏷️ 카테고리 관리</h3>
+            <div id="cat-list" style="margin-bottom:20px; max-height:200px; overflow-y:auto;"></div>
+            <div style="display:flex; gap:10px; align-items:center; border-top:1px solid #eee; padding-top:20px;">
+                <input type="text" id="new-cat-name" placeholder="카테고리 이름" style="flex:2; margin:0;">
+                <select id="new-cat-color" style="flex:1; margin:0;">
+                    <option value="#007bff">파랑 (기본)</option>
+                    <option value="#dc3545">빨강 (중요)</option>
+                    <option value="#28a745">초록 (완료)</option>
+                    <option value="#ffc107">노랑 (대기)</option>
+                    <option value="#6f42c1">보라 (기타)</option>
+                </select>
+                <button class="btn-main" onclick="addCategory()">추가</button>
+            </div>
+            <button class="btn-sub" style="width:100%; margin-top:20px;" onclick="closeModal('cat-modal')">닫기</button>
+        </div>
+    </div>
+
+    <div id="custom-dialog" class="modal-overlay hidden" style="z-index:9999;">
+        <div class="modal-content" style="max-width:380px; text-align:center;">
+            <h3 id="dialog-title">알림</h3>
+            <p id="dialog-msg"></p>
+            <div id="dialog-input-box" class="hidden"><input type="text" id="dialog-input-val" style="margin-bottom:20px;"></div>
+            <div style="display:flex; gap:12px; margin-top:10px;">
+                <button id="dialog-ok" class="btn-main" style="flex:1">확인</button>
+                <button id="dialog-cancel" class="btn-sub hidden" style="flex:1">취소</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- [전역 변수] ---
+        let events=[], todos=[], folders=[], categories=[], notes=[], nFolders=[];
+        let calDate = new Date();
+        let currentTab = 'calendar';
+        let activeTodoFolder = '오늘 할 일';
+        let activeNoteFolder = '일반';
+        let activeNoteId = null;
+        let dragStartStr = null;
+        let saveTimer = null;
+        let draggedItemId = null;
+        
+        let isSavingNewNote = false; 
+        let currentFolderMgrType = ''; // 추가: 모달용 폴더 타입 저장 변수
+
+	let draggedTodoFolderId = null;
+        let draggedNoteFolderId = null;
+
+        const guideLabel = document.getElementById('drag-guide-label');
+
+        const api = async (url, method='GET', body=null) => {
+            const headers = { 'Content-Type': 'application/json', 'x-user-id': localStorage.getItem('user_id') };
+            const res = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : null });
+            if (res.status === 401) { logout(); return; }
+            return res.json();
+        };
+
+	 const krHolidays = {
+            // 2026년
+            '2026-01-01': '신정', '2026-02-16': '설날 연휴', '2026-02-17': '설날', '2026-02-18': '설날 연휴', '2026-03-01': '삼일절', '2026-03-02': '대체공휴일', '2026-05-05': '어린이날', '2026-05-24': '부처님오신날', '2026-05-25': '대체공휴일', '2026-06-03': '지방선거', '2026-06-06': '현충일', '2026-08-15': '광복절', '2026-08-17': '대체공휴일', '2026-09-24': '추석 연휴', '2026-09-25': '추석', '2026-09-26': '추석 연휴', '2026-10-03': '개천절', '2026-10-05': '대체공휴일', '2026-10-09': '한글날', '2026-12-25': '기독탄신일',
+
+            // 2027년
+            '2027-01-01': '신정', '2027-02-06': '설날 연휴', '2027-02-07': '설날', '2027-02-08': '설날 연휴', '2027-02-09': '대체공휴일', '2027-03-01': '삼일절', '2027-03-03': '대통령선거', '2027-05-05': '어린이날', '2027-05-13': '부처님오신날', '2027-06-06': '현충일', '2027-08-15': '광복절', '2027-08-16': '대체공휴일', '2027-09-14': '추석 연휴', '2027-09-15': '추석', '2027-09-16': '추석 연휴', '2027-10-03': '개천절', '2027-10-04': '대체공휴일', '2027-10-09': '한글날', '2027-10-11': '대체공휴일', '2027-12-25': '기독탄신일', '2027-12-27': '대체공휴일',
+
+            // 2028년
+            '2028-01-01': '신정', '2028-01-26': '설날 연휴', '2028-01-27': '설날', '2028-01-28': '설날 연휴', '2028-03-01': '삼일절', '2028-04-12': '국회의원선거', '2028-05-02': '부처님오신날', '2028-05-05': '어린이날', '2028-06-06': '현충일', '2028-08-15': '광복절', '2028-10-02': '추석 연휴', '2028-10-03': '추석/개천절', '2028-10-04': '추석 연휴', '2028-10-05': '대체공휴일', '2028-10-09': '한글날', '2028-12-25': '기독탄신일',
+
+            // 2029년
+            '2029-01-01': '신정', '2029-02-12': '설날 연휴', '2029-02-13': '설날', '2029-02-14': '설날 연휴', '2029-03-01': '삼일절', '2029-05-05': '어린이날', '2029-05-07': '대체공휴일', '2029-05-20': '부처님오신날', '2029-05-21': '대체공휴일', '2029-06-06': '현충일', '2029-08-15': '광복절', '2029-09-21': '추석 연휴', '2029-09-22': '추석', '2029-09-23': '추석 연휴', '2029-09-24': '대체공휴일', '2029-10-03': '개천절', '2029-10-09': '한글날', '2029-12-25': '기독탄신일',
+
+            // 2030년
+            '2030-01-01': '신정', '2030-02-02': '설날 연휴', '2030-02-03': '설날', '2030-02-04': '설날 연휴', '2030-02-05': '대체공휴일', '2030-03-01': '삼일절', '2030-05-05': '어린이날', '2030-05-06': '대체공휴일', '2030-05-09': '부처님오신날', '2030-06-06': '현충일', '2030-08-15': '광복절', '2030-09-11': '추석 연휴', '2030-09-12': '추석', '2030-09-13': '추석 연휴', '2030-10-03': '개천절', '2030-10-09': '한글날', '2030-12-25': '기독탄신일'
+        };
+        // --- [팝업 헬퍼] ---
+        function alertPop(msg) { return new Promise(res => { document.getElementById('dialog-msg').innerText=msg; document.getElementById('dialog-input-box').classList.add('hidden'); document.getElementById('dialog-cancel').classList.add('hidden'); document.getElementById('custom-dialog').classList.remove('hidden'); document.getElementById('dialog-ok').onclick=()=>{document.getElementById('custom-dialog').classList.add('hidden'); res(true);}; }); }
+        function confirmPop(msg) { return new Promise(res => { document.getElementById('dialog-msg').innerText=msg; document.getElementById('dialog-input-box').classList.add('hidden'); document.getElementById('dialog-cancel').classList.remove('hidden'); document.getElementById('custom-dialog').classList.remove('hidden'); document.getElementById('dialog-ok').onclick=()=>{document.getElementById('custom-dialog').classList.add('hidden'); res(true);}; document.getElementById('dialog-cancel').onclick=()=>{document.getElementById('custom-dialog').classList.add('hidden'); res(false);}; }); }
+        function promptPop(msg) { return new Promise(res => { document.getElementById('dialog-msg').innerText=msg; document.getElementById('dialog-input-box').classList.remove('hidden'); document.getElementById('dialog-input-val').value=''; document.getElementById('dialog-cancel').classList.remove('hidden'); document.getElementById('custom-dialog').classList.remove('hidden'); document.getElementById('dialog-input-val').focus(); document.getElementById('dialog-ok').onclick=()=>{const v=document.getElementById('dialog-input-val').value; document.getElementById('custom-dialog').classList.add('hidden'); res(v);}; document.getElementById('dialog-cancel').onclick=()=>{document.getElementById('custom-dialog').classList.add('hidden'); res(null);}; }); }
+
+        // --- [인증] ---
+        function toggleAuth(t) { document.getElementById('login-form').classList.toggle('hidden', t==='signup'); document.getElementById('signup-form').classList.toggle('hidden', t==='login'); }
+        function checkPw() { const pw=document.getElementById('signup-pw').value; const regex=/^(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*])(?=.{8,})/; const isValid=regex.test(pw); document.getElementById('pw-hint').className = 'pw-hint ' + (isValid ? 'valid' : 'invalid'); document.getElementById('signup-btn').disabled=!isValid; }
+        async function handleSignup() { const u=document.getElementById('signup-id').value; const p=document.getElementById('signup-pw').value; const res=await fetch('/api/signup', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:u, password:p}) }); if(res.ok) { await alertPop("가입 요청 완료! 승인 후 로그인해 줘."); toggleAuth('login'); } else await alertPop("중복된 아이디야."); }
+        async function handleLogin() { const u=document.getElementById('login-id').value; const p=document.getElementById('login-pw').value; const res=await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:u, password:p}) }); const data=await res.json(); if(res.ok) { localStorage.setItem('user_id', data.userId); if(data.isAdmin) showAdmin(); else location.reload(); } else await alertPop(data.error); }
+        function logout() { localStorage.clear(); location.reload(); }
+
+        window.onload = () => {
+            const uid = localStorage.getItem('user_id');
+            if(uid) {
+                document.getElementById('auth-section').classList.add('hidden');
+                if(uid === 'admin') showAdmin();
+                else { document.getElementById('app-section').classList.remove('hidden'); document.getElementById('top-nav').classList.remove('hidden'); loadAll(); }
+            }
+        };
+
+        async function showAdmin() {
+            document.getElementById('auth-section').classList.add('hidden'); // 로그인창 숨김
+            document.getElementById('admin-section').classList.remove('hidden');
+            const res = await api('/api/admin/users');
+            document.getElementById('admin-user-list').innerHTML = res.map(u => `<tr><td style="padding:15px">${u.id}</td><td>${u.username}</td><td>${u.is_approved?'✅ 승인됨':'⏳ 대기중'}</td><td>${!u.is_approved?`<button onclick="approveUser(${u.id})">승인</button>`:''} <button onclick="delUser(${u.id})">삭제</button></td></tr>`).join('');
+        }
+        async function approveUser(id) { await api(`/api/admin/users/${id}/approve`, 'PATCH'); showAdmin(); }
+        async function delUser(id) { if(await confirmPop("삭제할까?")) { await api(`/api/admin/users/${id}`, 'DELETE'); showAdmin(); } }
+
+        // --- [메인 로드] ---
+        async function loadAll() {
+            const [e, t, f, c, n, nf] = await Promise.all([api('/api/events'), api('/api/todos'), api('/api/folders'), api('/api/event-categories'), api('/api/notes'), api('/api/note-folders')]);
+            events=e; todos=t; folders=f; categories=c; notes=n; nFolders=nf;
+            renderAll();
+        }
+
+        function renderAll() {
+            if(currentTab === 'calendar') renderCalendar();
+            else if(currentTab === 'todo') { renderTodoFolders(); renderTodos(); }
+            else if(currentTab === 'notes') renderNoteTree();
+            populateSelects();
+        }
+
+        function switchTab(t) {
+            currentTab = t;
+            document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+            document.getElementById('nav-'+t).classList.add('active');
+            ['tab-calendar', 'tab-todo', 'tab-notes'].forEach(id => document.getElementById(id).classList.add('hidden'));
+            document.getElementById('tab-'+t).classList.remove('hidden');
+            renderAll();
+        }
+
+        function populateSelects() {
+            const ec = document.getElementById('ev-cat'); if(ec) ec.innerHTML = categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+            const nfs = document.getElementById('note-folder-sel'); if(nfs) nfs.innerHTML = nFolders.map(f => `<option value="${f.name}">${f.name}</option>`).join('');
+            const tfs = document.getElementById('todo-folder-sel-modal'); if(tfs) tfs.innerHTML = '<option value="미지정">미지정</option>' + folders.map(f => `<option value="${f.name}">${f.name}</option>`).join('');
+        }
+
+        // --- [일정 기능 & 드래그 앤 드롭] ---
+        function renderCalendar() {
+            const grid = document.getElementById('large-cal-grid'); grid.innerHTML = '';
+            const y = calDate.getFullYear(), m = calDate.getMonth();
+            document.getElementById('cal-title').innerText = `${y}년 ${m+1}월`;
+            
+            // [수정됨] 요일 이름 렌더링 (일요일 빨강, 토요일 파랑)
+            const days = ['일','월','화','수','목','금','토'];
+            days.forEach((d, idx) => {
+                const colorClass = idx === 0 ? 'text-sun' : (idx === 6 ? 'text-sat' : '');
+                grid.innerHTML += `<div class="large-cal-day-name ${colorClass}">${d}</div>`;
+            });
+            
+            const first = new Date(y, m, 1).getDay(); const last = new Date(y, m+1, 0).getDate();
+            const todayStr = new Date().toISOString().split('T')[0];
+            
+            for(let i=0; i<first; i++) grid.innerHTML += `<div class="large-cal-box empty"></div>`;
+            for(let i=1; i<=last; i++) {
+                const ds = `${y}-${String(m+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
+                const dayEvs = events.filter(e => ds >= e.startDate && ds <= e.endDate);
+                const isToday = ds === todayStr;
+                
+                // [수정됨] 요일 및 공휴일 판별
+                const dayOfWeek = (first + i - 1) % 7; // 0: 일요일, 6: 토요일
+                const holidayName = krHolidays[ds];
+                
+                // 일요일이거나 공휴일이면 빨간색, 토요일이면 파란색
+                let dateColorClass = '';
+                if (dayOfWeek === 0 || holidayName) dateColorClass = 'text-sun';
+                else if (dayOfWeek === 6) dateColorClass = 'text-sat';
+                
+                // 공휴일 이름 HTML 태그 생성
+                const holidayHtml = holidayName ? `<span class="holiday-name">${holidayName}</span>` : '';
+                
+                const dateHtml = `<div class="large-cal-date-row">${holidayHtml}${isToday ? `<div class="today-badge">${i}</div>` : `<div class="large-cal-date ${dateColorClass}">${i}</div>`}</div>`;
+                
+                const evsHtml = dayEvs.map(e => {
+                    const c = categories.find(cat => cat.name === e.category) || {color:'#007bff'};
+		    const tooltipText = e.note ? `[메모] ${e.note.replace(/"/g, '&quot;')}` : e.title;
+	            return `<div class="event-badge" draggable="true" style="background:${c.color}15; color:${c.color}; border-left:4px solid ${c.color}" 
+                ondragstart="evDragStart(event, ${e.id}, '${e.startDate}')" 
+                onclick="editEv(event, ${e.id})"
+                onmousemove="showEvTooltip(event, ${e.id})" 
+                onmouseleave="hideEvTooltip()">
+                ${e.isAllDay?'':'['+e.startTime+'] '}${e.title}
+            </div>`;
+                }).join('');
+                
+                grid.innerHTML += `<div class="large-cal-box" onmousedown="dragStartStr='${ds}'" onmouseup="endCalDrag('${ds}')" ondragover="event.preventDefault()" ondrop="evDrop(event, '${ds}')">${dateHtml}${evsHtml}</div>`;
+            }
+        }
+        function changeMonth(n) { calDate.setMonth(calDate.getMonth()+n); renderCalendar(); }
+        function goToday() { calDate = new Date(); renderCalendar(); }
+        function endCalDrag(ds) { if(!dragStartStr) return; let s=dragStartStr, e=ds; if(s>e) [s,e]=[e,s]; openEvModal(s,e); dragStartStr=null; }
+        function evDragStart(e, id, sd) { e.stopPropagation(); e.dataTransfer.setData('evId', id); e.dataTransfer.setData('origSd', sd); }
+        async function evDrop(e, targetDs) {
+            e.preventDefault(); e.stopPropagation();
+            const id = e.dataTransfer.getData('evId'); if(!id) return;
+            const ev = events.find(x => x.id == id);
+            const diffMs = new Date(targetDs) - new Date(e.dataTransfer.getData('origSd'));
+            const newSd = new Date(new Date(ev.startDate).getTime() + diffMs).toISOString().split('T')[0];
+            const newEd = new Date(new Date(ev.endDate).getTime() + diffMs).toISOString().split('T')[0];
+            await api(`/api/events/${id}`, 'PUT', { ...ev, startDate: newSd, endDate: newEd });
+            loadAll();
+        }
+        function openEvModal(s, e) {
+            document.getElementById('ev-id').value = ''; document.getElementById('ev-title').value = '';
+            document.getElementById('ev-sd').value = s; document.getElementById('ev-ed').value = e;
+            const now = new Date(); now.setMinutes(Math.ceil(now.getMinutes()/5)*5);
+            document.getElementById('ev-st').value = now.toTimeString().slice(0,5);
+            evStartChange(); document.getElementById('ev-allday').checked = false; toggleEvTime();
+            document.getElementById('ev-del-btn').classList.add('hidden'); document.getElementById('event-modal').classList.remove('hidden');
+        }
+        function evStartChange() { const v=document.getElementById('ev-st').value; if(!v) return; const [h,m]=v.split(':').map(Number); const d=new Date(); d.setHours(h+1, m); document.getElementById('ev-et').value=d.toTimeString().slice(0,5); }
+        function toggleEvTime() { document.getElementById('ev-time-box').classList.toggle('hidden', document.getElementById('ev-allday').checked); }
+        async function saveEvent() {
+            const id = document.getElementById('ev-id').value;
+            const payload = { title: document.getElementById('ev-title').value, startDate: document.getElementById('ev-sd').value, endDate: document.getElementById('ev-ed').value, startTime: document.getElementById('ev-st').value, endTime: document.getElementById('ev-et').value, isAllDay: document.getElementById('ev-allday').checked?1:0, category: document.getElementById('ev-cat').value, note: document.getElementById('ev-note').value };
+            if(!payload.title) return alertPop("제목을 입력해 줘!");
+            await api(id ? `/api/events/${id}` : '/api/events', id ? 'PUT' : 'POST', payload);
+            closeModal('event-modal'); loadAll();
+        }
+        function editEv(e, id) { e.stopPropagation(); const ev = events.find(x => x.id === id); document.getElementById('ev-id').value = ev.id; document.getElementById('ev-title').value = ev.title; document.getElementById('ev-sd').value = ev.startDate; document.getElementById('ev-ed').value = ev.endDate; document.getElementById('ev-st').value = ev.startTime; document.getElementById('ev-et').value = ev.endTime; document.getElementById('ev-allday').checked = ev.isAllDay===1; document.getElementById('ev-cat').value = ev.category; toggleEvTime(); document.getElementById('ev-del-btn').classList.remove('hidden'); document.getElementById('event-modal').classList.remove('hidden'); }
+        async function delEvent() { if(await confirmPop("삭제할까?")) { await api(`/api/events/${document.getElementById('ev-id').value}`, 'DELETE'); closeModal('event-modal'); loadAll(); } }
+
+        // [수정] 카테고리 관리 함수 UI/UX 개선 반영
+        function openCatMgr() { renderCatList(); document.getElementById('cat-modal').classList.remove('hidden'); }
+        function renderCatList() { 
+            document.getElementById('cat-list').innerHTML = categories.map(c => `
+                <div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
+                    <input type="color" value="${c.color}" onchange="updateCat(${c.id}, null, this.value)" style="width:30px; height:30px; padding:0; border-radius:4px;">
+                    <input type="text" value="${c.name}" onblur="updateCat(${c.id}, this.value, null)" style="flex:1; margin:0;">
+                    <button class="btn-sub" style="color:red; padding:10px 15px; margin:0;" onclick="delCat(${c.id})">삭제</button>
+                </div>
+            `).join(''); 
+        }
+        async function addCategory() { const n=document.getElementById('new-cat-name').value; const c=document.getElementById('new-cat-color').value; if(n) { await api('/api/event-categories', 'POST', {name:n, color:c}); loadAll(); setTimeout(renderCatList, 300); } }
+        async function updateCat(id, name, color) { const cat=categories.find(x=>x.id===id); await api(`/api/event-categories/${id}`, 'PUT', {name: name||cat.name, color: color||cat.color}); loadAll(); }
+        async function delCat(id) { if(await confirmPop("삭제?")) { await api(`/api/event-categories/${id}`, 'DELETE'); loadAll(); setTimeout(renderCatList, 300); } }
+
+        // --- [할일 로직 & 드래그 앤 드롭] ---
+        // 1. 할 일 폴더 목록을 그리는 함수 (폴더 드래그 앤 드롭 포함)
+        function renderTodoFolders() {
+            const list = document.getElementById('todo-folder-list'); list.innerHTML = '';
+            const basic = (n, i) => { const li = document.createElement('li'); li.className = `folder-item ${activeTodoFolder===n?'active':''}`; li.innerHTML = `<span>${i}</span> ${n}`; li.onclick = () => { activeTodoFolder=n; renderTodoFolders(); renderTodos(); document.getElementById('todo-folder-title').innerText=n; }; list.appendChild(li); };
+            
+            basic('오늘 할 일', '📅'); basic('전체보기', '📋');
+            
+            folders.forEach(f => {
+                const li = document.createElement('li'); li.className = `folder-item ${activeTodoFolder===f.name?'active':''}`;
+                li.innerHTML = `<span>📁</span> ${f.name}`;
+                
+                // 폴더 드래그 앤 드롭
+                li.setAttribute('draggable', 'true');
+                li.ondragstart = () => { draggedTodoFolderId = f.id; li.style.opacity = '0.5'; };
+                li.ondragover = (e) => { e.preventDefault(); li.style.borderTop = '2px solid #007bff'; }; 
+                li.ondragleave = () => { li.style.borderTop = ''; };
+                li.ondrop = async (e) => {
+                    e.preventDefault(); li.style.borderTop = '';
+                    if(!draggedTodoFolderId || draggedTodoFolderId === f.id) return;
+                    await api('/api/folders/reorder', 'PATCH', { id: draggedTodoFolderId, targetPosition: f.position - 0.01 });
+                    loadAll();
+                };
+                li.ondragend = () => { li.style.opacity = '1'; draggedTodoFolderId = null; };
+                
+                li.onclick = () => { activeTodoFolder=f.name; renderTodoFolders(); renderTodos(); document.getElementById('todo-folder-title').innerText=f.name; };
+                list.appendChild(li);
+            });
+        }
+        
+        // 2. 누락되었던 할 일 필터링 및 렌더링 함수!
+        function renderTodos() {
+            const grid = document.getElementById('todo-list'); grid.innerHTML = '';
+            const today = new Date().toISOString().split('T')[0];
+            
+            const hideFuture = document.getElementById('hide-future').checked;
+            const hideCompleted = document.getElementById('hide-completed').checked;
+        
+            const filtered = todos.filter(t => {
+                if (activeTodoFolder !== '전체보기' && t.folder !== activeTodoFolder) return false;
+                if (hideCompleted && t.isCompleted) return false;
+                if (hideFuture && t.dueDate && t.dueDate > today) return false;
+                return true;
+            });
+        
+            filtered.filter(t => !t.parentId).forEach(p => { 
+                grid.appendChild(createTodoEl(p)); 
+                todos.filter(c => c.parentId === p.id).forEach(c => grid.appendChild(createTodoEl(c))); 
+            });
+        }
+        
+        // 3. 할 일 HTML 요소를 만드는 함수 (아이콘, 폴더명, 하위 등록 제한 로직 포함)
+        function createTodoEl(t) {
+            const div = document.createElement('div'); const isSub = !!t.parentId;
+            div.className = `todo-item ${isSub?'sub-task':''} ${t.isCompleted?'completed':''}`;
+            div.setAttribute('draggable', 'true');
+            
+            div.ondragstart = () => { draggedItemId = t.id; div.classList.add('dragging'); guideLabel.style.display='block'; };
+            div.ondragover = (e) => {
+                e.preventDefault(); guideLabel.style.left = (e.clientX+15)+'px'; guideLabel.style.top = (e.clientY+15)+'px';
+                const rect = div.getBoundingClientRect();
+                if(e.clientY - rect.top > rect.height * 0.7) { div.classList.add('drag-over-bottom'); div.classList.remove('drag-over-top'); guideLabel.innerText='📂 하위로'; }
+                else { div.classList.add('drag-over-top'); div.classList.remove('drag-over-bottom'); guideLabel.innerText='↕️ 이동'; }
+            };
+            div.ondrop = async (e) => {
+                e.preventDefault(); div.classList.remove('drag-over-top', 'drag-over-bottom');
+                
+                const draggedTodo = todos.find(x => x.id === draggedItemId);
+                if(!draggedTodo) return;
+        
+                const pId = (e.clientY - div.getBoundingClientRect().top > div.getBoundingClientRect().height * 0.7) ? t.id : null;
+                
+                if(pId) {
+                    if(isSub) { alertPop("1단계 하위까지만 등록 가능해!"); return; }
+                    if(draggedTodo.folder !== t.folder) { alertPop("같은 폴더 안에서만 하위 할 일로 묶을 수 있어!"); return; }
+                }
+        
+                await api('/api/todos/reorder', 'PATCH', { id: draggedItemId, parentId: pId, targetPosition: t.position - 0.01 });
+                loadAll();
+            };
+            div.ondragend = () => { div.classList.remove('dragging'); guideLabel.style.display='none'; };
+        
+            // 폴더명과 반복 아이콘 표시
+            const folderPrefix = (t.folder && t.folder !== '미지정') ? `<span style="color:#007bff; margin-right:6px; font-weight:bold;">[${t.folder}]</span>` : '';
+            const recurIcon = (t.recurrence && t.recurrence !== 'none') ? `<span title="반복 할 일" style="color:#28a745; margin-left:10px; font-size:1.2em;">🔄</span>` : '';
+        
+            div.innerHTML = `
+                <input type="checkbox" ${t.isCompleted?'checked':''} onchange="toggleTodo(${t.id}, ${t.isCompleted})">
+                <div style="flex:1; display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="editTodo(${t.id})">
+                    <div>
+                        <b class="todo-title-text">${folderPrefix}${t.title}</b><br>
+                        <small>${t.dueDate||'없음'}</small>
+                    </div>
+                    ${recurIcon}
+                </div>
+                <button onclick="delTodo(${t.id})" style="color:red; background:none; border:none; cursor:pointer;">✕</button>
+            `;
+            return div;
+        }
+        function openTodoModal() { document.getElementById('todo-id').value=''; document.getElementById('todo-title').value=''; document.getElementById('todo-due').value=new Date().toISOString().split('T')[0]; document.getElementById('todo-modal').classList.remove('hidden'); }
+        function editTodo(id) { const t=todos.find(x=>x.id===id); document.getElementById('todo-id').value=t.id; document.getElementById('todo-title').value=t.title; document.getElementById('todo-due').value=t.dueDate; document.getElementById('todo-folder-sel-modal').value=t.folder; document.getElementById('todo-recur').value=t.recurrence; document.getElementById('todo-modal').classList.remove('hidden'); }
+        async function saveTodo() { const id=document.getElementById('todo-id').value; const p={title:document.getElementById('todo-title').value, folder:document.getElementById('todo-folder-sel-modal').value, dueDate:document.getElementById('todo-due').value, recurrence:document.getElementById('todo-recur').value, note:document.getElementById('todo-note').value}; await api(id?`/api/todos/${id}`:'/api/todos', id?'PUT':'POST', p); closeModal('todo-modal'); loadAll(); }
+        async function toggleTodo(id, s) { await api(`/api/todos/${id}`, 'PATCH', {isCompleted: s?0:1}); loadAll(); }
+        async function delTodo(id) { if(await confirmPop("삭제?")) { await api(`/api/todos/${id}`, 'DELETE'); loadAll(); } }
+
+        // --- [메모 로직 & 드래그 앤 드롭] ---
+	function renderNoteTree() {
+            const grid = document.getElementById('note-tree'); grid.innerHTML = '';
+            nFolders.forEach(f => {
+                const h = document.createElement('div'); h.className='tree-folder-header';
+                h.innerHTML = `<span>📁 ${f.name}</span> <span onclick="toggleTree(event, ${f.id})">▼</span>`;
+
+                // 메모 폴더 드래그 앤 드롭 설정
+                h.setAttribute('draggable', 'true');
+                h.ondragstart = (e) => {
+                    draggedNoteFolderId = f.id;
+                    e.dataTransfer.setData('sourceType', 'folder'); // 폴더 드래그임을 표시
+                    h.style.opacity = '0.5';
+                };
+                h.ondragover = (e) => { e.preventDefault(); h.classList.add('drag-over'); };
+                h.ondragleave = () => h.classList.remove('drag-over');
+                h.ondrop = async (e) => {
+                    e.preventDefault(); h.classList.remove('drag-over');
+
+                    const sourceType = e.dataTransfer.getData('sourceType');
+                    const noteId = e.dataTransfer.getData('noteId');
+
+                    // 폴더 순서 변경인 경우
+                    if(sourceType === 'folder' && draggedNoteFolderId && draggedNoteFolderId !== f.id) {
+                        await api('/api/note-folders/reorder', 'PATCH', { id: draggedNoteFolderId, targetPosition: f.position - 0.01 });
+                        loadAll();
+                    }
+                    // 메모를 이 폴더로 이동하는 경우
+                    else if (noteId) {
+                        const note = notes.find(n => n.id == noteId);
+                        await api(`/api/notes/${noteId}`, 'PUT', { ...note, folder: f.name });
+                        loadAll();
+                    }
+                };
+                h.ondragend = () => { h.style.opacity = '1'; draggedNoteFolderId = null; };
+
+                grid.appendChild(h);
+
+                const items = document.createElement('div'); items.id = 'tree-items-'+f.id;
+                notes.filter(n => n.folder === f.name).forEach(n => {
+                    const item = document.createElement('div'); item.className=`tree-note-item ${activeNoteId===n.id?'active':''}`;
+                    item.innerText = '📄 ' + n.title; item.setAttribute('draggable', 'true');
+                    item.ondragstart = (e) => {
+                        e.dataTransfer.setData('noteId', n.id);
+                        e.dataTransfer.setData('sourceType', 'note'); // 메모 드래그임을 표시
+                    };
+                    item.onclick = () => openNote(n.id);
+                    items.appendChild(item);
+                });
+                grid.appendChild(items);
+            });
+        }
+        function toggleTree(e, id) { e.stopPropagation(); document.getElementById('tree-items-'+id).classList.toggle('hidden'); }
+        function openNote(id) { const n=notes.find(x=>x.id===id); activeNoteId=n.id; document.getElementById('note-title').value=n.title; document.getElementById('note-content').value=n.content; document.getElementById('note-folder-sel').value=n.folder; renderNoteTree(); }
+        function newNote() { activeNoteId = null; document.getElementById('note-title').value = ''; document.getElementById('note-content').value = ''; document.getElementById('note-title').focus(); }
+        function autoSave() { 
+            clearTimeout(saveTimer); 
+            saveTimer = setTimeout(async () => { 
+                if (isSavingNewNote) return; 
+
+                const p = {
+                    title: document.getElementById('note-title').value || "제목없음", 
+                    content: document.getElementById('note-content').value, 
+                    folder: document.getElementById('note-folder-sel').value
+                }; 
+                if (activeNoteId) { 
+                    await api(`/api/notes/${activeNoteId}`, 'PUT', p); 
+                } else { 
+                    isSavingNewNote = true; 
+                    const r = await api('/api/notes', 'POST', p); 
+                    activeNoteId = r.id; 
+                    isSavingNewNote = false; 
+                } 
+                document.getElementById('save-status').innerText = "저장됨 ✓"; 
+                loadAll(); 
+            }, 1000); 
+        }
+
+        // [수정] 통합된 폴더 관리 및 추가 함수
+        function openFolderMgr(type) {
+            currentFolderMgrType = type;
+            const list = type === 'todo' ? folders : nFolders;
+            document.getElementById('folder-mgr-list').innerHTML = list.map(f => `
+                <div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
+                    <input type="text" value="${f.name}" id="fm-in-${f.id}" style="flex:1; margin:0;">
+                    <button class="btn-sub" style="padding:10px 15px; margin:0;" onclick="updateFm(${f.id}, '${type}')">수정</button>
+                    <button class="btn-sub" style="color:red; padding:10px 15px; margin:0;" onclick="delFm(${f.id}, '${type}')">삭제</button>
+                </div>
+            `).join('');
+            
+            document.getElementById('new-folder-name').value = ''; // 모달 열때 입력창 비우기
+            document.getElementById('folder-mgr-modal').classList.remove('hidden');
+        }
+
+        async function addNewFolderFromMgr() {
+            const name = document.getElementById('new-folder-name').value.trim();
+            if (!name) return alertPop("폴더 이름을 입력해 주세요.");
+            
+            await api(currentFolderMgrType === 'todo' ? '/api/folders' : '/api/note-folders', 'POST', {name});
+            loadAll();
+            setTimeout(() => openFolderMgr(currentFolderMgrType), 300); // 갱신된 폴더 목록 띄우기
+        }
+
+        async function updateFm(id, type) { const name=document.getElementById(`fm-in-${id}`).value; await api((type==='todo'?'/api/folders/':'/api/note-folders/')+id, 'PUT', {name}); loadAll(); setTimeout(()=>openFolderMgr(type), 300); }
+        async function delFm(id, type) { if(await confirmPop("삭제?")) { await api((type==='todo'?'/api/folders/':'/api/note-folders/')+id, 'DELETE'); loadAll(); setTimeout(()=>openFolderMgr(type), 300); } }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+        function showEvTooltip(e, id) {
+            const ev = events.find(x => x.id === id);
+            if (!ev || !ev.note) return; // 상세 메모가 없으면 띄우지 않음
+
+            const tt = document.getElementById('custom-tooltip');
+            // 메모 안의 줄바꿈(\n)을 HTML 줄바꿈(<br>)으로 변환해서 보여줌
+            tt.innerHTML = `<b style="color:#ffd700;">📝 상세 메모</b><br>` + ev.note.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, '<br>');
+
+            // 마우스 커서의 우측 하단으로 툴팁 위치 이동 (커서를 따라다님)
+            tt.style.left = (e.clientX + 15) + 'px';
+            tt.style.top = (e.clientY + 15) + 'px';
+            tt.classList.remove('hidden');
+        }
+
+        function hideEvTooltip() {
+            document.getElementById('custom-tooltip').classList.add('hidden');
+        }
+        async function delCurrentNote() {
+            if (!activeNoteId) {
+                await alertPop("삭제할 메모가 선택되지 않았어!");
+                return;
+            }
+            
+            if (await confirmPop("정말 이 메모를 삭제할까?")) {
+                await api(`/api/notes/${activeNoteId}`, 'DELETE');
+                
+                // 화면 초기화 (새 메모 상태로 변경)
+                activeNoteId = null;
+                document.getElementById('note-title').value = '';
+                document.getElementById('note-content').value = '';
+                document.getElementById('save-status').innerText = '';
+                
+                loadAll(); // 폴더 트리 새로고침
+            }
+        }		
+    </script>
+</body>
+</html>
