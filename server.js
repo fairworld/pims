@@ -43,8 +43,8 @@ app.post('/api/signup', (req, res) => {
 
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
-    const adminId = process.env.ADMIN_ID || 'admin';
-    const adminPw = process.env.ADMIN_PW || 'admin123';
+    const adminId = process.env.ADMIN_ID;
+    const adminPw = process.env.ADMIN_PW;
 
     if (username === adminId && password === adminPw) {
         return res.json({ success: true, isAdmin: true, userId: 'admin' });
