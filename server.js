@@ -90,8 +90,38 @@ app.patch('/api/todos/reorder', auth, (req, res) => {
     const { id, parentId, targetPosition } = req.body;
     db.run(`UPDATE todos SET parentId = ?, position = ? WHERE id = ? AND user_id = ?`, [parentId, targetPosition, id, req.userId], () => res.json({ success: true }));
 });
+// [수정됨] 할 일 상태 변경 (반복 일정 자동 생성 로직 추가)
 app.patch('/api/todos/:id', auth, (req, res) => {
-    db.run(`UPDATE todos SET isCompleted = ? WHERE (id = ? OR parentId = ?) AND user_id = ?`, [req.body.isCompleted, req.params.id, req.params.id, req.userId], () => res.json({ success: true }));
+    const { isCompleted } = req.body;
+    
+    if (isCompleted === 1) { // 완료 처리할 때
+        db.get(`SELECT * FROM todos WHERE id = ? AND user_id = ?`, [req.params.id, req.userId], (err, row) => {
+            if (row && row.recurrence && row.recurrence !== 'none') {
+                // 다음 날짜 계산
+                let nextDate = new Date(row.dueDate);
+                if (isNaN(nextDate.getTime())) nextDate = new Date(); // 날짜가 없으면 오늘 기준
+                
+                if (row.recurrence === 'daily') nextDate.setDate(nextDate.getDate() + 1);
+                else if (row.recurrence === 'weekly') nextDate.setDate(nextDate.getDate() + 7);
+                else if (row.recurrence === 'monthly') nextDate.setMonth(nextDate.getMonth() + 1);
+                
+                const nextDateStr = nextDate.toISOString().split('T')[0];
+                
+                // 1. 다음 주기의 새 할 일 생성
+                db.run(`INSERT INTO todos (user_id, title, note, parentId, folder, dueDate, recurrence, position) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, 
+                [req.userId, row.title, row.note, row.parentId, row.folder, nextDateStr, row.recurrence, row.position + 0.001]);
+                
+                // 2. 현재 할 일은 완료 처리하고, 무한 생성을 막기 위해 반복 속성 해제
+                db.run(`UPDATE todos SET isCompleted = 1, recurrence = 'none' WHERE (id = ? OR parentId = ?) AND user_id = ?`, [req.params.id, req.params.id, req.userId], () => res.json({ success: true }));
+            } else {
+                // 반복이 아닌 일반 할 일의 완료 처리
+                db.run(`UPDATE todos SET isCompleted = 1 WHERE (id = ? OR parentId = ?) AND user_id = ?`, [req.params.id, req.params.id, req.userId], () => res.json({ success: true }));
+            }
+        });
+    } else {
+        // 미완료로 되돌릴 때
+        db.run(`UPDATE todos SET isCompleted = 0 WHERE (id = ? OR parentId = ?) AND user_id = ?`, [req.params.id, req.params.id, req.userId], () => res.json({ success: true }));
+    }
 });
 app.delete('/api/todos/:id', auth, (req, res) => { db.run(`DELETE FROM todos WHERE (id = ? OR parentId = ?) AND user_id = ?`, [req.params.id, req.params.id, req.userId], () => res.json({ success: true })); });
 
