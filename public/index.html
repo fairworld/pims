@@ -434,7 +434,7 @@
 		        grid.innerHTML += `<div class="large-cal-day-name ${colorClass}">${days[dayIdx]}요일</div>`;
 		    }
 		
-		    const todayStr = new Date().toISOString().split('T')[0];
+			const todayStr = getLocalDateStr();
 		    let loopStart, loopEnd;
 		
 		    // 모드별 반복 기간 설정
@@ -566,8 +566,8 @@
 		// [수정됨] 완료된 항목 분리 및 '오늘 할 일' 렌더링 로직 개선
 		function renderTodos() {
 		    const grid = document.getElementById('todo-list'); grid.innerHTML = '';
-		    const today = new Date().toISOString().split('T')[0];
-		    
+			const today = getLocalDateStr();
+
 		    const hideFuture = document.getElementById('hide-future').checked;
 		    const hideCompleted = document.getElementById('hide-completed').checked;
 		
@@ -663,7 +663,7 @@
 		function openTodoModal() { 
 		    document.getElementById('todo-id').value=''; 
 		    document.getElementById('todo-title').value=''; 
-		    document.getElementById('todo-due').value=new Date().toISOString().split('T')[0]; 
+			document.getElementById('todo-due').value=getLocalDateStr();			
 		    
 		    // 폴더 자동 지정 로직
 		    const sel = document.getElementById('todo-folder-sel-modal');
@@ -820,7 +820,13 @@
                 
                 loadAll(); // 폴더 트리 새로고침
             }
-        }		
+        }
+
+		// [추가됨] 한국 시간(로컬 타임존) 기준 YYYY-MM-DD 문자열을 반환하는 함수
+		function getLocalDateStr(d = new Date()) {
+		    const tzOffset = d.getTimezoneOffset() * 60000; // 분 단위를 밀리초로 변환
+		    return new Date(d.getTime() - tzOffset).toISOString().split('T')[0];
+		}		
     </script>
 </body>
 </html>
