@@ -452,7 +452,7 @@
 		    // 날짜 박스 렌더링
 		    let cur = new Date(loopStart);
 		    while(cur <= loopEnd) {
-		        const ds = cur.toISOString().split('T')[0];
+		        const ds = getLocalDateStr(cur); // <-- 로컬 시간 변환 함수로 교체!
 		        const dayEvs = events.filter(e => ds >= e.startDate && ds <= e.endDate);
 		        const isToday = ds === todayStr;
 		        const dayOfWeek = cur.getDay();
