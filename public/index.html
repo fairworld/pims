@@ -202,6 +202,7 @@
                         </div>
                     </div>
                     <input type="text" id="note-title" style="font-size:1.5em; border:none; border-bottom:2px solid #eee; padding-bottom:10px; margin-bottom:15px; outline:none;" placeholder="제목" oninput="autoSave()">
+					<div id="note-timestamps" style="font-size:0.85em; color:#999; margin-bottom:15px; text-align:right;"></div>
                     <textarea id="note-content" class="note-editor-content" placeholder="여기에 내용을 입력하세요. 자동으로 저장됩니다..." oninput="autoSave()"></textarea>
                 </div>
             </div>
@@ -737,30 +738,68 @@
             });
         }
         function toggleTree(e, id) { e.stopPropagation(); document.getElementById('tree-items-'+id).classList.toggle('hidden'); }
-        function openNote(id) { const n=notes.find(x=>x.id===id); activeNoteId=n.id; document.getElementById('note-title').value=n.title; document.getElementById('note-content').value=n.content; document.getElementById('note-folder-sel').value=n.folder; renderNoteTree(); }
-        function newNote() { activeNoteId = null; document.getElementById('note-title').value = ''; document.getElementById('note-content').value = ''; document.getElementById('note-title').focus(); }
-        function autoSave() { 
-            clearTimeout(saveTimer); 
-            saveTimer = setTimeout(async () => { 
-                if (isSavingNewNote) return; 
-
-                const p = {
-                    title: document.getElementById('note-title').value || "제목없음", 
-                    content: document.getElementById('note-content').value, 
-                    folder: document.getElementById('note-folder-sel').value
-                }; 
-                if (activeNoteId) { 
-                    await api(`/api/notes/${activeNoteId}`, 'PUT', p); 
-                } else { 
-                    isSavingNewNote = true; 
-                    const r = await api('/api/notes', 'POST', p); 
-                    activeNoteId = r.id; 
-                    isSavingNewNote = false; 
-                } 
-                document.getElementById('save-status').innerText = "저장됨 ✓"; 
-                loadAll(); 
-            }, 1000); 
-        }
+		// [수정됨] 메모 열기
+		function openNote(id) { 
+		    const n = notes.find(x => x.id === id); 
+		    activeNoteId = n.id; 
+		    document.getElementById('note-title').value = n.title; 
+		    document.getElementById('note-content').value = n.content; 
+		    document.getElementById('note-folder-sel').value = n.folder; 
+		    
+		    // 👇 시간 표시 로직 추가
+		    const ct = n.created_at || '기록 없음';
+		    const ut = n.updated_at || '기록 없음';
+		    document.getElementById('note-timestamps').innerText = `작성일: ${ct} | 마지막 수정: ${ut}`;
+		    
+		    renderNoteTree(); 
+		}
+		
+		// [수정됨] 새 메모 작성
+		function newNote() { 
+		    activeNoteId = null; 
+		    document.getElementById('note-title').value = ''; 
+		    document.getElementById('note-content').value = ''; 
+		    
+		    // 👇 새 메모 상태 표시
+		    document.getElementById('note-timestamps').innerText = '새 메모 작성 중...';
+		    document.getElementById('note-title').focus(); 
+		}
+		
+		// [수정됨] 자동 저장 후 시간 업데이트
+		function autoSave() { 
+		    clearTimeout(saveTimer); 
+		    saveTimer = setTimeout(async () => { 
+		        if (isSavingNewNote) return; 
+		
+		        const p = {
+		            title: document.getElementById('note-title').value || "제목없음", 
+		            content: document.getElementById('note-content').value, 
+		            folder: document.getElementById('note-folder-sel').value
+		        }; 
+		        if (activeNoteId) { 
+		            await api(`/api/notes/${activeNoteId}`, 'PUT', p); 
+		        } else { 
+		            isSavingNewNote = true; 
+		            const r = await api('/api/notes', 'POST', p); 
+		            activeNoteId = r.id; 
+		            isSavingNewNote = false; 
+		        } 
+		        
+		        document.getElementById('save-status').innerText = "저장됨 ✓"; 
+		        
+		        // 👇 저장 완료 후 목록을 다시 불러오고 바뀐 시간을 화면에 적용
+		        loadAll().then(() => {
+		            if (activeNoteId) {
+		                const updatedNote = notes.find(n => n.id === activeNoteId);
+		                if (updatedNote) {
+		                    const ct = updatedNote.created_at || '기록 없음';
+		                    const ut = updatedNote.updated_at || '기록 없음';
+		                    document.getElementById('note-timestamps').innerText = `작성일: ${ct} | 마지막 수정: ${ut}`;
+		                }
+		            }
+		        });
+		    }, 1000); 
+		}
 
         // [수정] 통합된 폴더 관리 및 추가 함수
         function openFolderMgr(type) {
