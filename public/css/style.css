@@ -1,0 +1,91 @@
+/* public/css/style.css */
+
+/* [1. 기본 스타일] */
+body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f0f2f5; color: #333; margin: 0; padding: 0; min-height: 100vh; display: flex; flex-direction: column; }
+.hidden { display: none !important; }
+.container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 20px; flex-grow: 1; }
+
+/* [UI 개선 반영] 체크박스, 색상선택기 크기 고정 및 라벨 정렬 */
+input[type="checkbox"], input[type="color"] { width: auto; padding: 0; margin: 0; border: none; cursor: pointer; display: inline-block; vertical-align: middle; height: 20px; }
+.filter-label { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-weight: bold; margin-right: 15px; }
+
+/* [2. 인증] */
+.auth-box { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); max-width: 350px; margin: 15vh auto; text-align: center; }
+.auth-box input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+
+/* [3. 네비게이션] */
+#top-nav { background: white; padding: 0 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+.nav-tabs { display: flex; gap: 20px; }
+.nav-tab { padding: 20px 10px; font-weight: bold; color: #666; cursor: pointer; border-bottom: 3px solid transparent; transition: 0.2s; }
+.nav-tab.active { color: #007bff; border-bottom: 3px solid #007bff; }
+
+.btn-main { background: #007bff; color: white; border: none; border-radius: 8px; padding: 10px 20px; font-weight: bold; cursor: pointer; }
+.btn-sub { background: #e9ecef; color: #444; border: none; border-radius: 8px; padding: 10px 20px; cursor: pointer; }
+input[type="text"], input[type="password"], input[type="date"], input[type="time"], select, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; margin-top: 5px; font-family: inherit; }
+
+/* [4. 달력] 26일 레이아웃 고정 및 배지 */
+.large-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); background: white; border: 1px solid #ddd; border-radius: 12px; overflow: hidden; }
+.large-cal-day-name { text-align: center; font-weight: bold; color: #777; padding: 10px 0; border-bottom: 1px solid #ddd; border-right: 1px solid #ddd; background: #f8f9fa; }
+.large-cal-box { min-height: 140px; padding: 5px; border-right: 1px solid #ddd; border-bottom: 1px solid #ddd; cursor: pointer; display: flex; flex-direction: column; transition: background 0.1s; }
+.large-cal-box:nth-child(7n) { border-right: none; }
+.large-cal-date-row { height: 32px; display: flex; justify-content: flex-end; align-items: center; margin-bottom: 5px; padding-right: 5px; }
+.today-badge { background: #007bff; color: white; border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+.event-badge { font-size: 0.8em; padding: 5px 8px; border-radius: 6px; margin-bottom: 4px; font-weight: bold; cursor: grab; line-height: 1.3; border-left: 4px solid #007bff; box-shadow: 0 1px 3px rgba(0,0,0,0.1); word-break: break-all; }
+
+/* [5. 할일 & 메모] 드래그 효과 */
+.app-layout { display: flex; gap: 20px; }
+.sidebar { width: 250px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); flex-shrink: 0; }
+.main-content { flex: 1; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+.folder-list { list-style: none; padding: 0; border-top: 1px solid #eee; padding-top: 10px; }
+.folder-item { padding: 12px 15px; margin-bottom: 4px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; transition: 0.2s; }
+.folder-item.active { background: #007bff; color: white; font-weight: bold; }
+
+.todo-item { display: flex; align-items: center; gap: 15px; padding: 15px; border-bottom: 1px solid #eee; background: white; cursor: grab; }
+.todo-item.completed { opacity: 0.5; }
+.todo-item.completed .todo-title-text { text-decoration: line-through; color: #999; }
+.sub-task { margin-left: 35px; border-left: 3px solid #007bff; background: #f8faff; border-radius: 0 8px 8px 0; }
+.overdue { color: #dc3545 !important; font-weight: bold; }
+
+.note-layout { display: flex; gap: 20px; height: 75vh; }
+.note-sidebar { width: 300px; background: white; border-radius: 12px; overflow-y: auto; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+.tree-folder-header { padding: 15px; background: #f8f9fa; font-weight: bold; cursor: pointer; display: flex; justify-content: space-between; border-bottom: 1px solid #eee; }
+.tree-folder-header.drag-over { background: #007bff !important; color: white; }
+.tree-note-item { padding: 10px 15px 10px 35px; cursor: grab; border-bottom: 1px solid #f9f9f9; font-size: 0.95em; }
+.tree-note-item.active { background: #e0f0ff; color: #007bff; font-weight: bold; }
+.note-main { flex: 1; background: white; border-radius: 12px; display: flex; flex-direction: column; padding: 30px; }
+
+/* [6. 모달 & 팝업] */
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 2000; }
+.modal-content { background: white; padding: 35px; border-radius: 20px; width: 100%; max-width: 450px; box-shadow: 0 15px 50px rgba(0,0,0,0.3); max-height: 90vh; overflow-y: auto; }
+#drag-guide-label { position: fixed; pointer-events: none; padding: 8px 16px; background: rgba(0,123,255,0.9); color: white; border-radius: 20px; font-weight: bold; z-index: 9999; display: none; }
+/* [달력 주말 및 공휴일 색상] */
+.text-sun { color: #dc3545 !important; font-weight: bold; } /* 빨강 (일요일/공휴일) */
+.text-sat { color: #007bff !important; font-weight: bold; } /* 파랑 (토요일) */
+.holiday-name { font-size: 0.75em; color: #dc3545; font-weight: bold; margin-right: auto; padding-left: 5px; }
+#custom-tooltip {
+        position: fixed;
+        background: rgba(0, 0, 0, 0.85);
+        color: white;
+        padding: 10px 15px;
+        border-radius: 8px;
+        font-size: 0.85em;
+        z-index: 10000;
+        pointer-events: none; /* 드래그를 방해하지 않도록 마우스 이벤트 무시 */
+        max-width: 250px;
+        line-height: 1.5;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+.note-editor-content {
+        flex: 1; /* 부모(note-main)의 남은 세로 공간을 모두 차지함 */
+        resize: none; /* 우측 하단 크기 조절 손잡이 숨김 */
+        font-size: 1.05em; /* 글씨 크기 살짝 키움 */
+        line-height: 1.6; /* 줄 간격을 넓혀서 가독성 향상 */
+        padding: 15px; /* 안쪽 여백 추가 */
+        border: 1px solid #eee; /* 테두리를 은은하게 */
+        border-radius: 8px; /* 모서리 둥글게 */
+        background-color: #fcfcfc; /* 배경색을 살짝 다르게 하여 입력창 구분 */
+    }
+/* [UI 개선] 체크박스 크기 확대 및 완료된 항목 가로선 */
+.todo-item input[type="checkbox"] { width: 22px !important; height: 22px !important; transform: scale(1.3); margin-right: 12px; cursor: pointer; accent-color: #007bff; }
+.completed-separator { margin: 30px 0 15px 0; border: 0; border-top: 2px dashed #ddd; position: relative; }
+.completed-separator::after { content: "완료된 항목"; position: absolute; top: -11px; left: 50%; transform: translateX(-50%); background: white; padding: 0 15px; color: #aaa; font-size: 0.9em; font-weight: bold; }
