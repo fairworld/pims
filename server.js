@@ -23,6 +23,9 @@ db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS notes (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, title TEXT, content TEXT, folder TEXT)`);
     db.run(`CREATE TABLE IF NOT EXISTS note_folders (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, name TEXT, position REAL)`);
     db.run(`CREATE TABLE IF NOT EXISTS settings (user_id INTEGER PRIMARY KEY, otp_secret TEXT, otp_enabled INTEGER DEFAULT 0)`);
+    // (기존에 만들어둔 테이블이 에러를 뱉지 않도록 안전하게 컬럼을 추가해 줍니다)
+    db.run(`ALTER TABLE notes ADD COLUMN created_at TEXT`, (err) => {});
+    db.run(`ALTER TABLE notes ADD COLUMN updated_at TEXT`, (err) => {});
 });
 
 const auth = (req, res, next) => {
@@ -154,8 +157,17 @@ app.delete('/api/event-categories/:id', auth, (req, res) => { db.run(`DELETE FRO
 
 // --- 메모(Notes) API ---
 app.get('/api/notes', auth, (req, res) => { db.all("SELECT * FROM notes WHERE user_id = ?", [req.userId], (err, rows) => res.json(rows)); });
-app.post('/api/notes', auth, (req, res) => { db.run(`INSERT INTO notes (user_id, title, content, folder) VALUES (?, ?, ?, ?)`, [req.userId, req.body.title, req.body.content, req.body.folder], function() { res.json({ id: this.lastID }); }); });
-app.put('/api/notes/:id', auth, (req, res) => { db.run(`UPDATE notes SET title = ?, content = ?, folder = ? WHERE id = ? AND user_id = ?`, [req.body.title, req.body.content, req.body.folder, req.params.id, req.userId], () => res.json({ success: true })); });
+app.post('/api/notes', auth, (req, res) => { 
+    // 작성일과 수정일 모두 현재 시간으로 삽입
+    db.run(`INSERT INTO notes (user_id, title, content, folder, created_at, updated_at) VALUES (?, ?, ?, ?, datetime('now', 'localtime'), datetime('now', 'localtime'))`, 
+    [req.userId, req.body.title, req.body.content, req.body.folder], function() { res.json({ id: this.lastID }); }); 
+});
+
+app.put('/api/notes/:id', auth, (req, res) => { 
+    // 내용이 수정될 때마다 updated_at을 현재 시간으로 업데이트
+    db.run(`UPDATE notes SET title = ?, content = ?, folder = ?, updated_at = datetime('now', 'localtime') WHERE id = ? AND user_id = ?`, 
+    [req.body.title, req.body.content, req.body.folder, req.params.id, req.userId], () => res.json({ success: true })); 
+});
 app.delete('/api/notes/:id', auth, (req, res) => { db.run(`DELETE FROM notes WHERE id = ? AND user_id = ?`, [req.params.id, req.userId], () => res.json({ success: true })); });
 
 app.get('/api/note-folders', auth, (req, res) => { db.all("SELECT * FROM note_folders WHERE user_id = ? ORDER BY position ASC", [req.userId], (err, rows) => res.json(rows)); });
