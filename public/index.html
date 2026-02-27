@@ -563,34 +563,38 @@
             });
         }
         
-		// [수정됨] 완료된 항목 분리 및 '오늘 할 일' 렌더링 로직 개선
+		// [수정됨] '오늘 할 일' 필터링 로직이 완벽하게 개선된 렌더링 함수
 		function renderTodos() {
 		    const grid = document.getElementById('todo-list'); grid.innerHTML = '';
-			const today = getLocalDateStr();
-
+		    const today = getLocalDateStr(); // 로컬 시간 기준 정확한 오늘 날짜
+		    
 		    const hideFuture = document.getElementById('hide-future').checked;
 		    const hideCompleted = document.getElementById('hide-completed').checked;
 		
 		    const filtered = todos.filter(t => {
-		        // [조건 1] '오늘 할 일'인 경우: 기한이 없거나, 기한이 오늘 이하인 모든 폴더의 일정을 보여줌
+		        // [조건 1] '오늘 할 일' 스마트 폴더 선택 시
 		        if (activeTodoFolder === '오늘 할 일') {
-		            if (t.dueDate && t.dueDate > today) return false;
+		            // 💡 핵심 수정: 마감일이 아예 없거나(!t.dueDate) 미래인 경우 제외합니다.
+		            // 즉, "마감일이 오늘과 같거나 과거인 할 일"만 화면에 남습니다.
+		            if (!t.dueDate || t.dueDate > today) return false;
 		        } 
-		        // [조건 2] 특정 폴더를 선택한 경우
+		        // [조건 2] 특정 일반 폴더 선택 시
 		        else if (activeTodoFolder !== '전체보기') {
 		            if (t.folder !== activeTodoFolder) return false;
 		        }
 		
+		        // [공통 조건] 완료/미래 숨기기 체크박스 반영
 		        if (hideCompleted && t.isCompleted) return false;
 		        if (hideFuture && t.dueDate && t.dueDate > today) return false;
+		        
 		        return true;
 		    });
 		
-		    // 활성 상태와 완료 상태로 분리
+		    // 진행 중인 일과 완료된 일을 분리
 		    const activeTodos = filtered.filter(t => !t.isCompleted);
 		    const completedTodos = filtered.filter(t => t.isCompleted);
 		
-		    // 트리 렌더링 헬퍼 함수
+		    // 트리 구조로 화면에 그리는 헬퍼 함수
 		    const renderTree = (list, parentElement) => {
 		        list.filter(t => !t.parentId).forEach(p => { 
 		            parentElement.appendChild(createTodoEl(p)); 
@@ -598,10 +602,10 @@
 		        });
 		    };
 		
-		    // 1. 진행 중인 할 일 렌더링
+		    // 1. 진행 중인 할 일 표시
 		    renderTree(activeTodos, grid);
 		
-		    // 2. 완료된 할 일이 있다면 가로선 긋고 맨 아래에 렌더링
+		    // 2. 완료된 할 일은 하단에 가로선과 함께 분리해서 표시
 		    if (completedTodos.length > 0 && !hideCompleted) {
 		        const sep = document.createElement('hr');
 		        sep.className = 'completed-separator';
