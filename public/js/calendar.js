@@ -45,7 +45,7 @@ function renderCalendar() {
     let cur = new Date(loopStart);
     while(cur <= loopEnd) {
         const ds = getLocalDateStr(cur); 
-        const dayEvs = events.filter(e => ds >= e.startDate && ds <= e.endDate);
+        const dayEvs = events.filter(e => isEventOnDate(e, ds));
         const isToday = ds === todayStr;
         const dayOfWeek = cur.getDay();
         const holidayName = krHolidays[ds];
@@ -92,6 +92,12 @@ async function evDrop(e, targetDs) {
 function openEvModal(s, e) {
     document.getElementById('ev-id').value = ''; document.getElementById('ev-title').value = '';
     document.getElementById('ev-sd').value = s; document.getElementById('ev-ed').value = e;
+    
+    // 반복 초기화
+    document.getElementById('ev-recur').value = 'none';
+    document.getElementById('ev-recur-end').value = '';
+    toggleEvRecurEnd();
+
     const now = new Date(); now.setMinutes(Math.ceil(now.getMinutes()/5)*5);
     document.getElementById('ev-st').value = now.toTimeString().slice(0,5);
     evStartChange(); document.getElementById('ev-allday').checked = false; toggleEvTime();
@@ -133,3 +139,81 @@ function showEvTooltip(e, id) {
     tt.classList.remove('hidden');
 }
 function hideEvTooltip() { document.getElementById('custom-tooltip').classList.add('hidden'); }
+function isEventOnDate(e, ds) {
+    // 1. 원본 일정 기간 안에 속하면 무조건 표시
+    if (ds >= e.startDate && ds <= e.endDate) return true;
+    
+    // 2. 반복이 없으면 더 볼 필요 없음
+    if (!e.recurrence || e.recurrence === 'none') return false;
+    
+    // 3. 원래 시작일 이전이거나, 반복 종료일 이후면 제외
+    if (ds < e.startDate) return false;
+    if (e.recurrenceEndDate && ds > e.recurrenceEndDate) return false;
+
+    // 4. 반복 주기 계산 로직
+    const eStart = new Date(e.startDate);
+    const curDate = new Date(ds);
+    
+    // 원래 일정이 며칠 동안 이어지는지 계산 (duration)
+    const durationMs = new Date(e.endDate) - eStart;
+    
+    if (e.recurrence === 'daily') {
+        return true; 
+    } else if (e.recurrence === 'weekly') {
+        // 일수 차이가 7의 배수인지 확인하여 다중 일수 이벤트도 깔끔하게 지원
+        const diffDays = Math.floor((curDate - eStart) / (1000 * 60 * 60 * 24));
+        const durationDays = Math.floor(durationMs / (1000 * 60 * 60 * 24));
+        const rem = diffDays % 7;
+        return rem >= 0 && rem <= durationDays;
+    } else if (e.recurrence === 'monthly') {
+        const tempStart = new Date(curDate.getFullYear(), curDate.getMonth(), eStart.getDate());
+        const tempEnd = new Date(tempStart.getTime() + durationMs);
+        return curDate >= tempStart && curDate <= tempEnd;
+    } else if (e.recurrence === 'yearly') {
+        const tempStart = new Date(curDate.getFullYear(), eStart.getMonth(), eStart.getDate());
+        const tempEnd = new Date(tempStart.getTime() + durationMs);
+        return curDate >= tempStart && curDate <= tempEnd;
+    }
+    return false;
+}
+function toggleEvRecurEnd() {
+    const recur = document.getElementById('ev-recur').value;
+    document.getElementById('ev-recur-end-box').classList.toggle('hidden', recur === 'none');
+}
+function editEv(e, id) { 
+    e.stopPropagation(); const ev = events.find(x => x.id === id); 
+    document.getElementById('ev-id').value = ev.id; 
+    document.getElementById('ev-title').value = ev.title; 
+    document.getElementById('ev-sd').value = ev.startDate; 
+    document.getElementById('ev-ed').value = ev.endDate; 
+    document.getElementById('ev-st').value = ev.startTime; 
+    document.getElementById('ev-et').value = ev.endTime; 
+    document.getElementById('ev-allday').checked = ev.isAllDay===1; 
+    document.getElementById('ev-cat').value = ev.category; 
+    
+    // 반복 불러오기
+    document.getElementById('ev-recur').value = ev.recurrence || 'none';
+    document.getElementById('ev-recur-end').value = ev.recurrenceEndDate || '';
+    toggleEvRecurEnd();
+
+    toggleEvTime(); document.getElementById('ev-del-btn').classList.remove('hidden'); document.getElementById('event-modal').classList.remove('hidden'); 
+}
+
+async function saveEvent() {
+    const id = document.getElementById('ev-id').value;
+    const payload = { 
+        title: document.getElementById('ev-title').value, 
+        startDate: document.getElementById('ev-sd').value, 
+        endDate: document.getElementById('ev-ed').value, 
+        startTime: document.getElementById('ev-st').value, 
+        endTime: document.getElementById('ev-et').value, 
+        isAllDay: document.getElementById('ev-allday').checked?1:0, 
+        category: document.getElementById('ev-cat').value, 
+        note: document.getElementById('ev-note').value,
+        recurrence: document.getElementById('ev-recur').value,
+        recurrenceEndDate: document.getElementById('ev-recur-end').value
+    };
+    if(!payload.title) return alertPop("제목을 입력해 줘!");
+    await api(id ? `/api/events/${id}` : '/api/events', id ? 'PUT' : 'POST', payload);
+    closeModal('event-modal'); loadAll();
+}
