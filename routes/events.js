@@ -5,14 +5,18 @@ const auth = require('../middlewares/auth');
 
 router.get('/events', auth, (req, res) => { db.all("SELECT * FROM events WHERE user_id = ?", [req.userId], (err, rows) => res.json(rows)); });
 router.post('/events', auth, (req, res) => {
-    const { title, startDate, endDate, startTime, endTime, isAllDay, category, note } = req.body;
-    db.run(`INSERT INTO events (user_id, title, startDate, endDate, startTime, endTime, isAllDay, category, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, 
-    [req.userId, title, startDate, endDate, startTime, endTime, isAllDay?1:0, category, note], function() { res.json({ id: this.lastID }); });
+    // recurrence와 recurrenceEndDate 추가
+    const { title, startDate, endDate, startTime, endTime, isAllDay, category, note, recurrence, recurrenceEndDate } = req.body;
+    
+    db.run(`INSERT INTO events (user_id, title, startDate, endDate, startTime, endTime, isAllDay, category, note, recurrence, recurrenceEndDate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, 
+    [req.userId, title, startDate, endDate, startTime, endTime, isAllDay?1:0, category, note, recurrence || 'none', recurrenceEndDate || null], function() { res.json({ id: this.lastID }); });
 });
+
 router.put('/events/:id', auth, (req, res) => {
-    const { title, startDate, endDate, startTime, endTime, isAllDay, category, note } = req.body;
-    db.run(`UPDATE events SET title=?, startDate=?, endDate=?, startTime=?, endTime=?, isAllDay=?, category=?, note=? WHERE id=? AND user_id=?`, 
-    [title, startDate, endDate, startTime, endTime, isAllDay?1:0, category, note, req.params.id, req.userId], () => res.json({ success: true }));
+    const { title, startDate, endDate, startTime, endTime, isAllDay, category, note, recurrence, recurrenceEndDate } = req.body;
+    
+    db.run(`UPDATE events SET title=?, startDate=?, endDate=?, startTime=?, endTime=?, isAllDay=?, category=?, note=?, recurrence=?, recurrenceEndDate=? WHERE id=? AND user_id=?`, 
+    [title, startDate, endDate, startTime, endTime, isAllDay?1:0, category, note, recurrence || 'none', recurrenceEndDate || null, req.params.id, req.userId], () => res.json({ success: true }));
 });
 router.delete('/events/:id', auth, (req, res) => { db.run(`DELETE FROM events WHERE id = ? AND user_id = ?`, [req.params.id, req.userId], () => res.json({ success: true })); });
 
