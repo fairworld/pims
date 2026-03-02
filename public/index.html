@@ -146,6 +146,22 @@
                 <div style="flex:1"><label>시작 시간</label><input type="time" id="ev-st" step="300" onchange="evStartChange()"></div>
                 <div style="flex:1"><label>종료 시간</label><input type="time" id="ev-et" step="300"></div>
             </div>
+			<div style="display:flex; gap:10px; margin-top:15px; margin-bottom:15px;">
+				<div style="flex:1">
+					<label>반복 설정</label>
+					<select id="ev-recur" onchange="toggleEvRecurEnd()">
+						<option value="none">반복 안 함</option>
+						<option value="daily">매일</option>
+						<option value="weekly">매주</option>
+						<option value="monthly">매월</option>
+						<option value="yearly">매년</option>
+					</select>
+				</div>
+				<div style="flex:1" id="ev-recur-end-box" class="hidden">
+					<label>반복 종료일</label>
+					<input type="date" id="ev-recur-end">
+				</div>
+			</div>			
             <label>상세 메모</label><textarea id="ev-note" rows="2"></textarea>
             <div style="display:flex; gap:10px; margin-top:25px;">
                 <button class="btn-main" style="flex:2" onclick="saveEvent()">저장하기</button>
