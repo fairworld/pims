@@ -17,6 +17,9 @@ db.serialize(() => {
     
     db.run(`ALTER TABLE notes ADD COLUMN created_at TEXT`, (err) => {});
     db.run(`ALTER TABLE notes ADD COLUMN updated_at TEXT`, (err) => {});
+
+    db.run(`ALTER TABLE events ADD COLUMN recurrence TEXT DEFAULT 'none'`, (err) => {});
+    db.run(`ALTER TABLE events ADD COLUMN recurrenceEndDate TEXT`, (err) => {});
 });
 
 // 다른 파일에서 db 객체를 사용할 수 있도록 내보냅니다.
